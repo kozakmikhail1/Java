@@ -1,0 +1,52 @@
+name: Java Build & SonarCloud Analysis
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+jobs:
+  build-and-scan:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        project-folder: ['lab_1']  # Замените на фактические имена ваших папок
+    env:
+      SONAR_ORG: kozakmikhail1
+      SONAR_PROJECT_KEY: java-${{ matrix.project-folder }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'  # Укажите нужную версию Java
+          distribution: 'temurin'
+
+      - name: Cache Maven dependencies
+        uses: actions/cache@v3
+        with:
+          path: ~/.m2/repository
+          key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
+          restore-keys: |
+            ${{ runner.os }}-maven-
+
+      - name: Build and analyze with SonarCloud
+        run: |
+          cd ${{ matrix.project-folder }}
+          
+          # Если используется Maven
+          mvn clean verify sonar:sonar \
+            -Dsonar.projectKey=${{ env.SONAR_PROJECT_KEY }} \
+            -Dsonar.organization=${{ env.SONAR_ORG }} \
+            -Dsonar.host.url=https://sonarcloud.io \
+            -Dsonar.token=${{ secrets.SONAR_TOKEN }} \
+            -Dsonar.java.source=17 \
+            -Dsonar.sourceEncoding=UTF-8
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
